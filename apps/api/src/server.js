@@ -14,6 +14,7 @@ import { streamRoutes } from './routes/stream.js';
 import { adminRoutes } from './routes/admin.js';
 import { reportRoutes } from './routes/reports.js';
 import { qrRoutes } from './routes/qr.js';
+import { importRoutes } from './routes/imports.js';
 
 // Management API: auth, roles, links, campaigns, analytics, imports and admin tools.
 
@@ -41,5 +42,6 @@ await app.register(streamRoutes);
 await app.register(adminRoutes);
 await app.register(reportRoutes);
 await app.register(qrRoutes);
+await app.register(importRoutes);
 
 app.listen({ port: config.apiPort, host: '127.0.0.1' }).then(() => app.log.info(`api on :${config.apiPort}`));
