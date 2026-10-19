@@ -33,7 +33,8 @@ export async function probe(url, timeoutMs = 4000) {
     // redirect: 'manual' so a public URL cannot bounce the probe into a private network.
     const res = await fetch(url, { redirect: 'manual', signal: ctrl.signal, headers: { 'user-agent': 'LinkPulseBot/1.0 (+link validation)', accept: 'text/html,*/*' } });
     let title = null;
-    if ((res.headers.get('content-type') || '').includes('text/html')) {
+    // Only a real page has a useful title; redirect bodies just say "Redirecting…".
+    if (res.status === 200 && (res.headers.get('content-type') || '').includes('text/html')) {
       const text = (await res.text()).slice(0, 200_000);
       const m = /<title[^>]*>([^<]{1,200})<\/title>/i.exec(text);
       if (m) title = m[1].replace(/\s+/g, ' ').trim();
