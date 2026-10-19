@@ -1,0 +1,18 @@
+{
+  "name": "@linkpulse/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/worker.js",
+  "scripts": {
+    "dev": "node --env-file=../../.env --watch src/worker.js",
+    "start": "node src/worker.js"
+  },
+  "dependencies": {
+    "@linkpulse/core": "0.1.0",
+    "@linkpulse/db": "0.1.0",
+    "@linkpulse/runtime": "0.1.0",
+    "geoip-lite": "^1.4.10",
+    "ua-parser-js": "^1.0.39"
+  }
+}
