@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage/
+
+# web build output
+apps/web/.next/
+apps/web/out/
+apps/web/next-env.d.ts
+
+# extension packaging
+apps/extension/*.zip

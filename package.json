@@ -1,0 +1,30 @@
+{
+  "name": "linkpulse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LinkPulse: link management, redirection and click analytics in one flow.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/redirect",
+    "apps/worker",
+    "apps/web"
+  ],
+  "scripts": {
+    "test": "node --test packages/core/test/",
+    "db:generate": "npm run generate -w @linkpulse/db",
+    "db:migrate": "npm run migrate -w @linkpulse/db",
+    "db:seed": "npm run seed -w @linkpulse/db",
+    "dev:api": "npm run dev -w @linkpulse/api",
+    "dev:redirect": "npm run dev -w @linkpulse/redirect",
+    "dev:worker": "npm run dev -w @linkpulse/worker",
+    "dev:web": "npm run dev -w @linkpulse/web",
+    "build:web": "npm run build -w @linkpulse/web",
+    "gateway": "node scripts/gateway.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
