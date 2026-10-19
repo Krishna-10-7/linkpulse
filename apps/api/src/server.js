@@ -10,6 +10,7 @@ import { linkRoutes } from './routes/links.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { campaignRoutes } from './routes/campaigns.js';
 import { dashboardRoutes } from './routes/dashboard.js';
+import { streamRoutes } from './routes/stream.js';
 
 // Management API: auth, roles, links, campaigns, analytics, imports and admin tools.
 
@@ -33,5 +34,6 @@ await app.register(linkRoutes);
 await app.register(analyticsRoutes);
 await app.register(campaignRoutes);
 await app.register(dashboardRoutes);
+await app.register(streamRoutes);
 
 app.listen({ port: config.apiPort, host: '127.0.0.1' }).then(() => app.log.info(`api on :${config.apiPort}`));
