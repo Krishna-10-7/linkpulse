@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>LinkPulse options</title><link rel="stylesheet" href="ui.css">
+<style>main { max-width: 520px; margin: 40px auto; padding: 0 16px; } h1 { font: 600 28px Georgia, serif; margin: 18px 0 6px; }</style></head>
+<body>
+<main class="stack">
+  <div class="brand"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#15161c"/><polyline points="8,34 20,34 26,20 34,48 42,12 48,34 56,34" fill="none" stroke="#ddf75b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>LinkPulse</div>
+  <h1>Connect the extension</h1>
+  <p class="muted">Create an access token in the LinkPulse dashboard under <strong>Settings → Access tokens</strong>, then paste it here.</p>
+  <div class="card stack">
+    <label><span class="label">Server address</span><input id="server" placeholder="https://r2-d2.xyz/lk"></label>
+    <label><span class="label">Access token</span><input id="token" placeholder="lp_…" autocomplete="off"></label>
+    <div class="row"><button id="save">Save and test</button><span id="status"></span></div>
+  </div>
+  <p class="muted">Shortcuts: right-click a link, a page or selected text · <span class="mono">Alt+Shift+S</span> shortens the current tab · type <span class="mono">lp</span> and a space in the address bar.</p>
+</main>
+<script type="module" src="options.js"></script>
+</body>
+</html>

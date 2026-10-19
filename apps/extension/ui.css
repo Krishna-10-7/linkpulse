@@ -1,0 +1,18 @@
+:root { --paper: #f4f2ea; --card: #fffefb; --ink: #15161c; --muted: #6f6c62; --mark: #ddf75b; --coral: #c63b20; --line: rgba(21,22,28,.14); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+.brand { display: flex; align-items: center; gap: 8px; font: 700 12px ui-monospace, Consolas, monospace; letter-spacing: .16em; text-transform: uppercase; }
+.brand svg { width: 22px; height: 22px; }
+.label { display: block; font: 700 10px ui-monospace, Consolas, monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+input, select { width: 100%; height: 36px; border: 2px solid var(--ink); border-radius: 10px; padding: 0 10px; font: inherit; background: #fff; }
+button { height: 36px; padding: 0 14px; border: 2px solid var(--ink); border-radius: 10px; background: var(--ink); color: var(--mark); font: 700 13px ui-monospace, Consolas, monospace; cursor: pointer; }
+button.ghost { background: #fff; color: var(--ink); }
+button:disabled { opacity: .5; cursor: default; }
+.card { background: var(--card); border: 2px solid var(--ink); border-radius: 14px; box-shadow: 3px 3px 0 var(--ink); padding: 12px; }
+.err { color: var(--coral); font-weight: 600; }
+.ok { color: #0b6e53; font-weight: 600; }
+.muted { color: var(--muted); }
+.mono { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+.row { display: flex; gap: 8px; align-items: center; }
+.stack > * + * { margin-top: 10px; }
+a { color: var(--ink); }
