@@ -9,7 +9,7 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "node --test packages/core/test/",
+    "test": "node --test packages/core/test/*.test.js",
     "db:generate": "npm run generate -w @linkpulse/db",
     "db:migrate": "npm run migrate -w @linkpulse/db",
     "db:seed": "npm run seed -w @linkpulse/db",
