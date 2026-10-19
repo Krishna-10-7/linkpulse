@@ -134,7 +134,7 @@ function Dashboard() {
       <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5"><div className="label mb-4">Traffic sources</div><BarList items={data.sources} format={sourceName} /></Card>
         <Card className="p-5"><div className="label mb-4">Devices</div><BarList items={data.devices} /></Card>
-        <Card className="p-5"><div className="label mb-4">Browsers</div><BarList items={data.browsers} /></Card>
+        <Card className="p-5"><div className="label mb-4">Browsers</div><BarList items={data.browsers} raw /></Card>
         <Card className="p-5"><div className="label mb-4">Countries</div><BarList items={data.countries} format={flag} /></Card>
       </div>
     </>

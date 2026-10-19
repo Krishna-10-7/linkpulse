@@ -36,7 +36,7 @@ export function ClicksChart({ data, hourly = false, height = 260 }: { data: Poin
 }
 
 /** Horizontal bars for a breakdown such as sources or countries. */
-export function BarList({ items, empty = 'No clicks yet.', format }: { items: { key: string; clicks: number }[]; empty?: string; format?: (k: string) => string }) {
+export function BarList({ items, empty = 'No clicks yet.', format, raw = false }: { items: { key: string; clicks: number }[]; empty?: string; format?: (k: string) => string; raw?: boolean }) {
   if (!items?.length) return <p className="py-6 text-center text-sm text-muted">{empty}</p>;
   const max = Math.max(...items.map(i => i.clicks), 1);
   const total = items.reduce((s, i) => s + i.clicks, 0) || 1;
@@ -44,7 +44,7 @@ export function BarList({ items, empty = 'No clicks yet.', format }: { items: { 
     <ul className="space-y-2.5">
       {items.map(i => (
         <li key={i.key}>
-          <div className="mb-1 flex justify-between text-sm"><span className="font-semibold capitalize">{format ? format(i.key) : i.key}</span><span className="font-mono text-xs text-muted">{num(i.clicks)} · {Math.round((i.clicks / total) * 100)}%</span></div>
+          <div className="mb-1 flex justify-between text-sm"><span className={raw ? 'font-semibold' : 'font-semibold capitalize'}>{format ? format(i.key) : i.key}</span><span className="font-mono text-xs text-muted">{num(i.clicks)} · {Math.round((i.clicks / total) * 100)}%</span></div>
           <div className="h-2.5 overflow-hidden rounded-full border border-ink bg-ink/5"><div className="h-full bg-mark" style={{ width: `${(i.clicks / max) * 100}%` }} /></div>
         </li>
       ))}
