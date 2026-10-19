@@ -1,8 +1,14 @@
 import Fastify from 'fastify';
+import formbody from '@fastify/formbody';
+import bcrypt from 'bcryptjs';
 import UAParser from 'ua-parser-js';
 import { evaluate, OUTCOME, classifyBot, dailySalt, visitorHash } from '@linkpulse/core';
 import { config, redis, keys, getLinkByCode } from '@linkpulse/runtime';
 import { pages } from './pages.js';
+import { cookieName, makeUnlockToken, verifyUnlockToken, parseCookies, UNLOCK_TTL_MS } from './unlock.js';
+
+const MAX_PASSWORD_TRIES = 5;
+const PASSWORD_WINDOW_SECONDS = 15 * 60;
 
 // The fast path. Look the link up in Redis, run the nine checks, answer with a 302,
 // and hand the click to the worker through a Redis stream without waiting for it.
@@ -38,7 +44,8 @@ async function handle(req, reply) {
   let currentClicks;
   if (link?.clickLimit != null) currentClicks = Number(await r.get(keys.cap(link.id))) || 0;
 
-  const result = evaluate(link, { now: new Date(), device, os, currentClicks });
+  const unlocked = link?.passwordHash ? verifyUnlockToken(link.id, parseCookies(req.headers.cookie)[cookieName(link.id)]) : false;
+  const result = evaluate(link, { now: new Date(), device, os, currentClicks, unlocked });
 
   switch (result.outcome) {
     case OUTCOME.NOT_FOUND: return html(reply, 404, pages.notFound(raw));
@@ -47,7 +54,7 @@ async function handle(req, reply) {
     case OUTCOME.NOT_LIVE: return html(reply, 404, pages.notLive(link.startsAt));
     case OUTCOME.EXPIRED: return html(reply, 410, pages.expired(link.expiresAt));
     case OUTCOME.LIMIT: return html(reply, 410, pages.limit());
-    case OUTCOME.PASSWORD: return html(reply, 401, pages.password(raw));
+    case OUTCOME.PASSWORD: return html(reply, 401, pages.password(link.code, null, queryString(req)));
     default: break;
   }
 
@@ -71,7 +78,41 @@ async function handle(req, reply) {
   return reply.code(302).header('cache-control', 'private, no-store').header('location', result.destination).send();
 }
 
+function queryString(req) {
+  const i = req.url.indexOf('?');
+  return i >= 0 ? req.url.slice(i) : '';
+}
+
+async function unlock(req, reply) {
+  const code = String(req.params.code || '');
+  const link = await getLinkByCode(code.toLowerCase());
+  if (!link || !link.passwordHash) return reply.redirect(303, `${config.basePath}/${code}${queryString(req)}`);
+
+  const ua = req.headers['user-agent'] || '';
+  const visitor = visitorHash(req.ip, ua, dailySalt(config.sessionSecret));
+  const triesKey = keys.pwTries(link.id, visitor);
+  const tries = await r.incr(triesKey);
+  if (tries === 1) await r.expire(triesKey, PASSWORD_WINDOW_SECONDS);
+  if (tries > MAX_PASSWORD_TRIES) return html(reply, 429, pages.tooMany());
+
+  const ok = await bcrypt.compare(String(req.body?.password || ''), link.passwordHash);
+  if (!ok) {
+    const left = MAX_PASSWORD_TRIES - tries;
+    return html(reply, 401, pages.password(link.code, `Wrong password. ${left} ${left === 1 ? 'try' : 'tries'} left.`, queryString(req)));
+  }
+  await r.del(triesKey);
+  const cookie = [
+    `${cookieName(link.id)}=${makeUnlockToken(link.id)}`,
+    `Path=${config.basePath}/${link.code}`, `Max-Age=${UNLOCK_TTL_MS / 1000}`, 'HttpOnly', 'SameSite=Lax',
+    config.production ? 'Secure' : '',
+  ].filter(Boolean).join('; ');
+  return reply.header('set-cookie', cookie).redirect(303, `${config.basePath}/${link.code}${queryString(req)}`);
+}
+
+await app.register(formbody);
+
 app.get('/health', async () => ({ ok: true, redis: (await r.ping().catch(() => 'down')) === 'PONG' }));
+app.post('/:code/unlock', unlock);
 app.get('/', async (req, reply) => reply.redirect(`${config.basePath}/app/`));
 app.route({ method: ['GET', 'HEAD'], url: '/:code', handler: handle });
 
