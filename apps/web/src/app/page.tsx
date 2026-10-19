@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppShell, useMe } from '@/components/AppShell';
 import { BarList, ClicksChart, Legend, Point } from '@/components/charts';
 import { PeriodPicker } from '@/components/PeriodPicker';
+import { LiveBadge } from '@/components/LiveBadge';
+import { useDebounced, useLive } from '@/lib/useLive';
 import { Badge, Button, Card, Empty, PageHeader, Spinner, Stat, cx } from '@/components/ui';
 import { api, qs } from '@/lib/api';
 import { num, pct, STATUS_STYLE } from '@/lib/format';
@@ -39,6 +41,8 @@ function Dashboard() {
   }, [period, campaignId, platform]);
 
   useEffect(() => { load(); }, [load]);
+  const refresh = useDebounced(load, 1500);
+  const live = useLive(() => refresh(), { platform });
   useEffect(() => { api<{ items: { id: string; name: string }[] }>('/campaigns').then(r => setCampaignList(r.items)).catch(() => {}); }, []);
 
   if (!data) return <div className="grid h-64 place-items-center"><Spinner /></div>;
@@ -57,6 +61,7 @@ function Dashboard() {
           <option value="">All campaigns</option>
           {campaignList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <LiveBadge connected={live.connected} last={live.last} />
         {me?.role === 'ADMIN' && (
           <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={platform} onChange={e => setPlatform(e.target.checked)} className="h-4 w-4 accent-ink" />Platform-wide</label>
         )}
