@@ -6,10 +6,7 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/api",
-    "apps/redirect",
-    "apps/worker",
-    "apps/web"
+    "apps/*"
   ],
   "scripts": {
     "test": "node --test packages/core/test/",

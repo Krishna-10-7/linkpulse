@@ -1,0 +1,276 @@
+// LinkPulse data model. The Link record is the hub: campaigns organise it,
+// redirect rules route it, click events record it, admins govern it.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum LinkStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+  DISABLED // set by an admin; beats every other rule
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum ImportStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  role         Role              @default(USER)
+  createdAt    DateTime          @default(now())
+  memberships  WorkspaceMember[]
+  links        Link[]
+  apiTokens    ApiToken[]
+  imports      ImportJob[]
+}
+
+model Workspace {
+  id        String            @id @default(cuid())
+  name      String
+  createdAt DateTime          @default(now())
+  members   WorkspaceMember[]
+  folders   Folder[]
+  campaigns Campaign[]
+  tags      Tag[]
+  links     Link[]
+}
+
+model WorkspaceMember {
+  userId      String
+  workspaceId String
+  role        String    @default("owner")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+}
+
+model Folder {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links       Link[]
+
+  @@unique([workspaceId, name])
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  goalClicks  Int?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links       Link[]
+
+  @@unique([workspaceId, name])
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String    @default("#ddf75b")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links       LinkTag[]
+
+  @@unique([workspaceId, name])
+}
+
+model Link {
+  id             String         @id @default(cuid())
+  code           String         // as typed, e.g. "Diwali-26"
+  codeLower      String         @unique // case-insensitive uniqueness
+  destination    String
+  title          String?
+  ownerId        String
+  workspaceId    String
+  folderId       String?
+  campaignId     String?
+  status         LinkStatus     @default(ACTIVE)
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  clickLimit     Int?
+  clickCount     Int            @default(0) // human clicks only
+  passwordHash   String?
+  utm            Json?
+  flagged        Boolean        @default(false) // auto-protect: waiting for admin review
+  disabledReason String?
+  disabledAt     DateTime?
+  disabledById   String?
+  healthStatus   Int? // last HTTP status of the destination
+  healthCheckAt  DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  owner          User           @relation(fields: [ownerId], references: [id])
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder         Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  campaign       Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  tags           LinkTag[]
+  rules          RedirectRule[]
+  clicks         ClickEvent[]
+  daily          ClickDaily[]
+  reports        AbuseReport[]
+
+  @@index([ownerId, createdAt])
+  @@index([campaignId])
+  @@index([destination])
+}
+
+model LinkTag {
+  linkId String
+  tagId  String
+  link   Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([linkId, tagId])
+}
+
+/// Targeting rules, evaluated by priority after all status checks pass.
+model RedirectRule {
+  id          String @id @default(cuid())
+  linkId      String
+  type        String // device | os | country
+  value       String // e.g. "mobile", "ios", "IN"
+  destination String
+  priority    Int    @default(0)
+  link        Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+}
+
+model ClickEvent {
+  id             BigInt   @id @default(autoincrement())
+  linkId         String
+  ts             DateTime @default(now())
+  visitorHash    String
+  country        String?
+  city           String?
+  deviceType     String // mobile | tablet | desktop | bot | other
+  os             String?
+  browser        String?
+  referrerDomain String?
+  source         String // direct | social | search | email | qr | referral
+  isBot          Boolean  @default(false)
+  isUnique       Boolean  @default(false)
+  viaQr          Boolean  @default(false)
+  link           Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, ts])
+  @@index([ts])
+}
+
+/// Daily rollups keep the dashboard fast as click_events grows.
+model ClickDaily {
+  linkId  String
+  day     DateTime @db.Date
+  clicks  Int      @default(0)
+  uniques Int      @default(0)
+  bots    Int      @default(0)
+  qr      Int      @default(0)
+  link    Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@id([linkId, day])
+}
+
+model BlockedDomain {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  reason    String?
+  addedById String?
+  createdAt DateTime @default(now())
+}
+
+model AbuseReport {
+  id           String       @id @default(cuid())
+  linkId       String
+  reason       String
+  reporterHash String
+  status       ReportStatus @default(OPEN)
+  createdAt    DateTime     @default(now())
+  link         Link         @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model ImportJob {
+  id         String       @id @default(cuid())
+  userId     String
+  filename   String
+  status     ImportStatus @default(QUEUED)
+  total      Int          @default(0)
+  valid      Int          @default(0)
+  invalid    Int          @default(0)
+  duplicates Int          @default(0)
+  imported   Int          @default(0)
+  createdAt  DateTime     @default(now())
+  finishedAt DateTime?
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rows       ImportRow[]
+}
+
+model ImportRow {
+  id        String    @id @default(cuid())
+  jobId     String
+  rowNumber Int
+  raw       Json
+  status    String // valid | invalid | duplicate | imported
+  message   String?
+  linkId    String?
+  job       ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+/// Personal access tokens, used by the browser extension.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
