@@ -62,6 +62,7 @@ export function validateDestination(input, opts = {}) {
   }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') {
     errors.push(issue('scheme', 'Only http and https links can be shortened.'));
+    return { url: null, hostname: null, errors, warnings };
   }
   if (u.username || u.password) errors.push(issue('credentials', 'URLs with embedded usernames or passwords are not allowed.'));
 
