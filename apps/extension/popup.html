@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>LinkPulse</title><link rel="stylesheet" href="ui.css">
+<style>
+  body { width: 360px; padding: 14px; }
+  #result .short { font: 600 20px Georgia, serif; word-break: break-all; margin: 4px 0 8px; }
+  #qr { width: 120px; height: 120px; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 4px; }
+  #recent li { list-style: none; padding: 6px 0; border-top: 1px solid var(--line); }
+  #recent { padding: 0; margin: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  [hidden] { display: none !important; }
+</style></head>
+<body class="stack">
+  <div class="row" style="justify-content:space-between"><div class="brand"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#15161c"/><polyline points="8,34 20,34 26,20 34,48 42,12 48,34 56,34" fill="none" stroke="#ddf75b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>LinkPulse</div><a href="#" id="opts" class="muted" style="font-size:12px">Options</a></div>
+
+  <div id="setup" class="card stack" hidden>
+    <strong>Connect your account</strong>
+    <p class="muted" style="margin:0">Add an access token from the dashboard's Settings page.</p>
+    <button id="openOptions">Open options</button>
+  </div>
+
+  <div id="form" class="card stack" hidden>
+    <label><span class="label">Destination</span><input id="url"></label>
+    <div class="grid2">
+      <label><span class="label">Alias (optional)</span><input id="alias" placeholder="diwali-sale"></label>
+      <label><span class="label">Expires</span><input id="expires" type="date"></label>
+    </div>
+    <label><span class="label">Campaign</span><select id="campaign"><option value="">No campaign</option></select></label>
+    <div id="error" class="err" hidden></div>
+    <button id="go">Shorten and copy</button>
+  </div>
+
+  <div id="result" class="card" hidden>
+    <span class="label ok">Copied to clipboard</span>
+    <div class="short" id="short"></div>
+    <div class="row" style="align-items:flex-start">
+      <img id="qr" alt="QR code">
+      <div class="stack" style="flex:1">
+        <button id="copy" class="ghost">Copy again</button>
+        <button id="analytics" class="ghost">Open analytics</button>
+        <div id="warn" class="muted" style="font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div><span class="label">Recent</span><ul id="recent"><li class="muted">Nothing yet.</li></ul></div>
+<script type="module" src="popup.js"></script>
+</body>
+</html>
