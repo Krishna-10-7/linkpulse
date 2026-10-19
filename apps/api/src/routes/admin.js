@@ -5,6 +5,8 @@ import { requireAdmin } from '../plugins/auth.js';
 import { parse, notFound, badRequest } from '../lib/http.js';
 import { serializeLink, LINK_INCLUDE } from '../lib/links.js';
 import { audit } from '../lib/audit.js';
+import { resetBlockCache } from '../lib/validation.js';
+import { domainOf } from '@linkpulse/core';
 import { parsePeriod, totals } from '../lib/analytics.js';
 
 const Search = z.object({
@@ -72,6 +74,38 @@ export async function adminRoutes(app) {
     await invalidateLink(link.codeLower);
     await audit(req.user.id, 'link.restore', 'link', link.id, { before: link.status, code: link.code });
     return { link: serializeLink(updated) };
+  });
+
+  // Domain blocklist. Adding a domain pauses every active link that points at it
+  // and flags it for review, so nothing keeps redirecting to a known-bad site.
+  app.get('/api/admin/blocklist', async () => ({ items: await prisma.blockedDomain.findMany({ orderBy: { createdAt: 'desc' } }) }));
+
+  app.post('/api/admin/blocklist', async (req, reply) => {
+    const body = parse(z.object({ domain: z.string().trim().toLowerCase().min(3).max(253), reason: z.string().trim().max(300).optional() }), req.body);
+    const domain = body.domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) throw badRequest('Enter a domain like example.com.');
+    const entry = await prisma.blockedDomain.upsert({ where: { domain }, update: { reason: body.reason }, create: { domain, reason: body.reason, addedById: req.user.id } });
+    resetBlockCache();
+
+    const affected = await prisma.link.findMany({
+      where: { status: 'ACTIVE', OR: [{ destination: { contains: `://${domain}`, mode: 'insensitive' } }, { destination: { contains: `.${domain}`, mode: 'insensitive' } }] },
+      select: { id: true, codeLower: true, destination: true },
+    });
+    const hits = affected.filter(l => { const h = domainOf(l.destination); return h === domain || h?.endsWith('.' + domain); });
+    if (hits.length) {
+      await prisma.link.updateMany({ where: { id: { in: hits.map(l => l.id) } }, data: { status: 'PAUSED', flagged: true, disabledReason: `Destination ${domain} is on the blocklist` } });
+      await Promise.all(hits.map(l => invalidateLink(l.codeLower)));
+    }
+    await audit(req.user.id, 'blocklist.add', 'domain', entry.id, { domain, reason: body.reason, pausedLinks: hits.length });
+    return reply.code(201).send({ entry, pausedLinks: hits.length });
+  });
+
+  app.delete('/api/admin/blocklist/:id', async req => {
+    const entry = await prisma.blockedDomain.delete({ where: { id: req.params.id } }).catch(() => null);
+    if (!entry) throw notFound('Not on the blocklist.');
+    resetBlockCache();
+    await audit(req.user.id, 'blocklist.remove', 'domain', entry.id, { domain: entry.domain });
+    return { ok: true };
   });
 
   app.get('/api/admin/users', async () => {

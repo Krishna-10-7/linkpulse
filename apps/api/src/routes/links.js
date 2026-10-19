@@ -109,6 +109,7 @@ export async function linkRoutes(app) {
   app.patch('/api/links/:id', async req => {
     const link = await findOwned(req.user, req.params.id);
     if (link.status === 'DISABLED' && req.user.role !== 'ADMIN') throw forbidden('An admin disabled this link. It can only be restored by an admin.');
+    if (link.flagged && req.user.role !== 'ADMIN') throw forbidden('This link is paused for review. An admin will look at it shortly.');
     const body = parse(LinkPatch, req.body);
     const data = {};
 
