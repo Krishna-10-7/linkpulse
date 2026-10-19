@@ -2,6 +2,7 @@ import os from 'node:os';
 import { prisma } from '@linkpulse/db';
 import { createRedis, keys, CLICK_GROUP } from '@linkpulse/runtime';
 import { enrich, fieldsOf } from './enrich.js';
+import { startHealthMonitor } from './health.js';
 
 // Click worker: reads the "clicks" stream through a consumer group, so if this
 // process stops, events wait in Redis and are picked up again on restart.
@@ -101,4 +102,6 @@ async function loop() {
 process.on('SIGTERM', () => { running = false; });
 process.on('SIGINT', () => { running = false; });
 console.log(`[worker] ${consumer} reading ${keys.clickStream}`);
+const health = startHealthMonitor();
+process.on('SIGTERM', () => clearInterval(health));
 loop().catch(err => { console.error(err); process.exit(1); }).finally(() => prisma.$disconnect().then(() => r.quit()));
