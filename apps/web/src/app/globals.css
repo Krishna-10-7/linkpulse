@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { color-scheme: light; }
+  body { @apply bg-paper text-ink font-sans antialiased; }
+  h1, h2, h3 { @apply font-display tracking-tight; }
+  :focus-visible { outline: 2px solid #3d44f0; outline-offset: 2px; }
+}
+
+@layer components {
+  .card { @apply bg-card border-2 border-ink rounded-xl2 shadow-ink; }
+  .soft { @apply bg-card border border-line rounded-xl2; }
+  .label { @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-muted; }
+  .input { @apply w-full h-11 rounded-xl border-2 border-ink bg-white px-3 text-[15px] placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-indigo/40; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-lg border border-line bg-ink/5 px-2.5 py-1 text-[13px] font-semibold whitespace-nowrap; }
+  .hl { background: linear-gradient(transparent 18%, #ddf75b 18%, #ddf75b 92%, transparent 92%); }
+}
