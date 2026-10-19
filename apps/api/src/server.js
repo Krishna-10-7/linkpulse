@@ -8,6 +8,7 @@ import { authPlugin } from './plugins/auth.js';
 import { authRoutes } from './routes/auth.js';
 import { linkRoutes } from './routes/links.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { campaignRoutes } from './routes/campaigns.js';
 
 // Management API: auth, roles, links, campaigns, analytics, imports and admin tools.
 
@@ -29,5 +30,6 @@ app.get('/api/health', async () => {
 await app.register(authRoutes);
 await app.register(linkRoutes);
 await app.register(analyticsRoutes);
+await app.register(campaignRoutes);
 
 app.listen({ port: config.apiPort, host: '127.0.0.1' }).then(() => app.log.info(`api on :${config.apiPort}`));
