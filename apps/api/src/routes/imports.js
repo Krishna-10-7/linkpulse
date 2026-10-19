@@ -54,6 +54,9 @@ async function runJob(jobId, user, results, log) {
 export async function importRoutes(app) {
   app.addHook('preHandler', requireUser);
 
+  // A job that was running when the process stopped will never finish; mark it so the page does not wait forever.
+  await prisma.importJob.updateMany({ where: { status: { in: ['QUEUED', 'RUNNING'] }, createdAt: { lt: new Date(Date.now() - 60_000) } }, data: { status: 'FAILED', finishedAt: new Date() } }).catch(() => {});
+
   app.get('/api/imports/template.csv', async (req, reply) =>
     reply.type('text/csv; charset=utf-8').header('content-disposition', 'attachment; filename="linkpulse-import-template.csv"').send(CSV_TEMPLATE));
 
