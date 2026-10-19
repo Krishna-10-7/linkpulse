@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@linkpulse/db';
 import { parse, conflict, unauthorized } from '../lib/http.js';
 import { setSession, clearSession, requireUser } from '../plugins/auth.js';
+import { enforce } from '../lib/limit.js';
 
 const Register = z.object({
   name: z.string().trim().min(2, 'Enter your name.').max(60),
@@ -15,6 +16,7 @@ const publicUser = u => ({ id: u.id, email: u.email, name: u.name, role: u.role 
 
 export async function authRoutes(app) {
   app.post('/api/auth/register', async (req, reply) => {
+    await enforce('register', req.ip);
     const body = parse(Register, req.body);
     if (await prisma.user.findUnique({ where: { email: body.email } })) throw conflict('An account with this email already exists.');
     const user = await prisma.user.create({
@@ -28,6 +30,7 @@ export async function authRoutes(app) {
   });
 
   app.post('/api/auth/login', async (req, reply) => {
+    await enforce('login', req.ip);
     const body = parse(Login, req.body);
     const user = await prisma.user.findUnique({ where: { email: body.email } });
     // Compare even when the user is missing so response time does not reveal which emails exist.
