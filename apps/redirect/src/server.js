@@ -34,8 +34,23 @@ async function logClick(link, req, { bot, botReason, destination, visitor }) {
   ).catch(err => req.log.error({ err }, 'click enqueue failed'));
 }
 
+// lp.ink/abc+ shows where a link goes, and whether it is safe, without redirecting.
+async function preview(code, reply) {
+  const link = await getLinkByCode(code.toLowerCase());
+  if (!link) return html(reply, 404, pages.notFound(code));
+  const now = new Date();
+  let state = { ok: true };
+  if (link.status === 'DISABLED') state = { ok: false, label: 'Disabled for safety' };
+  else if (link.flagged) state = { ok: false, label: 'Under review' };
+  else if (link.status !== 'ACTIVE') state = { ok: false, label: 'Inactive' };
+  else if (link.expiresAt && new Date(link.expiresAt) <= now) state = { ok: false, label: 'Expired' };
+  const shown = state.ok ? link : { ...link, destination: state.label === 'Disabled for safety' ? 'Hidden — this destination was reported as unsafe.' : link.destination };
+  return html(reply, 200, pages.preview({ link: shown, state, shortUrl: `${config.publicBaseUrl}/${link.code}` }));
+}
+
 async function handle(req, reply) {
   const raw = String(req.params.code || '');
+  if (raw.endsWith('+') && raw.length > 1) return preview(raw.slice(0, -1), reply);
   const link = await getLinkByCode(raw.toLowerCase());
   const ua = req.headers['user-agent'] || '';
   const { device, os } = deviceOf(ua);
