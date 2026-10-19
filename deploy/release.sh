@@ -23,7 +23,8 @@ cd "$DIR"
 
 set -a; . "$ENV_FILE"; set +a
 echo "==> installing dependencies"
-npm ci --no-audit --no-fund --loglevel=error
+# Dev dependencies are needed to build the dashboard; they are pruned afterwards.
+npm ci --include=dev --no-audit --no-fund --loglevel=error
 echo "==> database migrations"
 npm run --silent db:generate
 npm run --silent db:migrate
@@ -33,6 +34,8 @@ echo "==> building dashboard"
 NEXT_PUBLIC_BASE_PATH="$BASE_PATH" npm run --silent build:web
 echo "==> packing browser extension"
 python3 -c "import shutil; shutil.make_archive('apps/web/out/linkpulse-extension', 'zip', 'apps/extension')"
+npm prune --omit=dev --no-audit --no-fund --loglevel=error
+npm run --silent db:generate
 
 chown -R linkpulse:linkpulse "$DIR"
 ln -sfn "$DIR" $ROOT/current.new && mv -T $ROOT/current.new $ROOT/current
