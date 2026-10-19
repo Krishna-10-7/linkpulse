@@ -1,0 +1,25 @@
+# Paste inside the site block (or a snippet it imports). Serves:
+#   /lk/api/*  -> API service (SSE needs flush_interval -1)
+#   /lk/app/*  -> static dashboard build
+#   /lk/*      -> redirect service (short links)
+
+	redir /lk /lk/app/ 308
+	redir /lk/ /lk/app/ 308
+	handle_path /lk/* {
+		handle /api/* {
+			reverse_proxy 127.0.0.1:8441 {
+				flush_interval -1
+			}
+		}
+		redir /app /lk/app/ 308
+		handle /app/* {
+			uri strip_prefix /app
+			root * /opt/linkpulse/current/apps/web/out
+			try_files {path} {path}/index.html {path}.html /404.html
+			header /_next/static/* Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+		handle {
+			reverse_proxy 127.0.0.1:8442
+		}
+	}

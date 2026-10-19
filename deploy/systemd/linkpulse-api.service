@@ -1,0 +1,21 @@
+[Unit]
+Description=LinkPulse API service
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=linkpulse
+WorkingDirectory=/opt/linkpulse/current/apps/api
+EnvironmentFile=/etc/linkpulse/linkpulse.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/linkpulse
+
+[Install]
+WantedBy=multi-user.target
