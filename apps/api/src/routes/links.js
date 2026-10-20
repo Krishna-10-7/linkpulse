@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@linkpulse/db';
-import { validateAlias, suggestAliases } from '@linkpulse/core';
+import { validateAlias, suggestAliases, validateDestination } from '@linkpulse/core';
 import { invalidateLink } from '@linkpulse/runtime';
 import { parse, badRequest, notFound, forbidden, conflict } from '../lib/http.js';
 import { requireUser, ownerScope } from '../plugins/auth.js';
@@ -43,9 +43,13 @@ const ListQuery = z.object({
   status: z.enum(['ACTIVE', 'PAUSED', 'ARCHIVED', 'DISABLED']).optional(),
   campaignId: z.string().optional(),
   tag: z.string().optional(),
+  destination: z.string().trim().max(2048).optional(), // exact match after normalisation, used to reuse links
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
+
+// Same normalisation as link creation, so "example.com/a" finds "https://example.com/a".
+const normalizeDestination = d => validateDestination(d).url ?? d;
 
 async function findOwned(user, id) {
   const link = await prisma.link.findFirst({ where: { id, ...ownerScope(user) }, include: LINK_INCLUDE });
@@ -95,6 +99,7 @@ export async function linkRoutes(app) {
       ...(q.status ? { status: q.status } : { status: { not: 'ARCHIVED' } }),
       ...(q.campaignId ? { campaignId: q.campaignId } : {}),
       ...(q.tag ? { tags: { some: { tag: { name: q.tag.toLowerCase() } } } } : {}),
+      ...(q.destination ? { destination: normalizeDestination(q.destination) } : {}),
       ...(q.q ? { OR: [{ codeLower: { contains: q.q.toLowerCase() } }, { destination: { contains: q.q, mode: 'insensitive' } }, { title: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
     const [items, total] = await Promise.all([

@@ -25,7 +25,7 @@ async function go() {
   $('go').disabled = true; $('go').textContent = 'Shortening…';
   try {
     const expires = $('expires').value;
-    const { link, warnings } = await shorten(url, {
+    const { link, warnings, reused } = await shorten(url, {
       alias: $('alias').value.trim() || null,
       campaignId: $('campaign').value || null,
       expiresAt: expires ? new Date(`${expires}T23:59:59`).toISOString() : null,
@@ -33,7 +33,7 @@ async function go() {
     current = link;
     await navigator.clipboard.writeText(link.shortUrl).catch(() => {});
     $('short').textContent = link.shortUrl.replace(/^https?:\/\//, '');
-    $('warn').textContent = warnings?.[0]?.message || '';
+    $('warn').textContent = reused ? 'You had already shortened this URL, so your existing link was reused.' : warnings?.[0]?.message || '';
     await showQr(link);
     $('form').hidden = true; $('result').hidden = false;
     renderRecent();

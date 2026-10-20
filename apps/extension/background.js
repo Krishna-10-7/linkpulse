@@ -40,9 +40,10 @@ chrome.omnibox.onInputEntered.addListener(text => {
 async function run(url) {
   if (!isShortenable(url)) return notify('Nothing to shorten', 'Only http and https pages can be shortened.');
   try {
-    const { link, warnings } = await shorten(url);
+    const { link, warnings, reused } = await shorten(url);
     await copy(link.shortUrl);
-    notify('Copied to clipboard', `${link.shortUrl}${warnings?.length ? `\n${warnings[0].message}` : ''}`);
+    notify(reused ? 'Existing link copied' : 'Copied to clipboard',
+      `${link.shortUrl}${reused ? '\nYou had already shortened this page.' : warnings?.length ? `\n${warnings[0].message}` : ''}`);
   } catch (err) {
     if (err instanceof NotConfigured) { chrome.runtime.openOptionsPage(); return; }
     notify('Could not shorten', err.message);

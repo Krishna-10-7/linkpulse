@@ -28,12 +28,34 @@ export async function call(path, { method = 'GET', body } = {}) {
   return data;
 }
 
-export async function shorten(url, extra = {}) {
+/** An active link you already made for this exact URL, if any. */
+export async function findExisting(url) {
+  const { items } = await call(`/links?status=ACTIVE&pageSize=1&destination=${encodeURIComponent(url)}`);
+  return items[0] || null;
+}
+
+/**
+ * Shorten a URL. Without a custom alias or other options, an existing active link
+ * for the same URL is reused instead of creating a duplicate (reused: true).
+ */
+export async function shorten(url, extra = {}, { reuse = true } = {}) {
+  const plain = !Object.values(extra).some(v => v !== null && v !== undefined && v !== '');
+  if (reuse && plain) {
+    const existing = await findExisting(url).catch(() => null);
+    if (existing) {
+      await remember(existing);
+      return { link: existing, warnings: [], reused: true };
+    }
+  }
   const { link, warnings } = await call('/links', { method: 'POST', body: { destination: url, ...extra } });
+  await remember(link);
+  return { link, warnings, reused: false };
+}
+
+async function remember(link) {
   const { recent = [] } = await chrome.storage.local.get('recent');
   const item = { id: link.id, shortUrl: link.shortUrl, destination: link.destination, title: link.title, at: Date.now() };
   await chrome.storage.local.set({ recent: [item, ...recent.filter(r => r.id !== link.id)].slice(0, 8) });
-  return { link, warnings };
 }
 
 export function isShortenable(url) {
