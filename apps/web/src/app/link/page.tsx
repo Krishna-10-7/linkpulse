@@ -5,7 +5,7 @@ import { AppShell } from '@/components/AppShell';
 import { BarList, ClicksChart, Legend, Point } from '@/components/charts';
 import { CopyButton } from '@/components/CopyButton';
 import { LiveBadge } from '@/components/LiveBadge';
-import { PeriodPicker } from '@/components/PeriodPicker';
+import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Badge, Button, Card, Field, Input, Notice, Spinner, Stat } from '@/components/ui';
 import { api, ApiError, qs } from '@/lib/api';
 import { ago, date, dateTime, num, pct, STATUS_STYLE, toLocalInput } from '@/lib/format';
@@ -77,7 +77,7 @@ function Detail() {
 
   useEffect(() => { setId(new URLSearchParams(location.search).get('id')); }, []);
   const loadLink = useCallback(() => { if (id) api<{ link: LinkItem }>(`/links/${id}`).then(r => setLink(r.link)).catch(e => setErr(e.message)); }, [id]);
-  const loadStats = useCallback(() => { if (id) api<Analytics>(`/links/${id}/analytics${qs({ period })}`).then(setA).catch(() => {}); }, [id, period]);
+  const loadStats = useCallback(() => { if (id) api<Analytics>(`/links/${id}/analytics${qs(periodQuery(period))}`).then(setA).catch(() => {}); }, [id, period]);
   useEffect(loadLink, [loadLink]);
   useEffect(loadStats, [loadStats]);
   const refresh = useDebounced(() => { loadStats(); loadLink(); }, 1200);

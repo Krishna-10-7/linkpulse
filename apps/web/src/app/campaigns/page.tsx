@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
-import { PeriodPicker } from '@/components/PeriodPicker';
+import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Button, Card, Empty, Field, Input, Notice, PageHeader, Spinner } from '@/components/ui';
 import { api, ApiError, qs } from '@/lib/api';
 import { date, num } from '@/lib/format';
@@ -49,7 +49,7 @@ function NewCampaign({ onCreated }: { onCreated: () => void }) {
 function Campaigns() {
   const [period, setPeriod] = useState('30d');
   const [items, setItems] = useState<Campaign[] | null>(null);
-  const load = useCallback(() => { api<{ items: Campaign[] }>(`/campaigns${qs({ period })}`).then(r => setItems(r.items)).catch(() => {}); }, [period]);
+  const load = useCallback(() => { api<{ items: Campaign[] }>(`/campaigns${qs(periodQuery(period))}`).then(r => setItems(r.items)).catch(() => {}); }, [period]);
   useEffect(load, [load]);
 
   return (

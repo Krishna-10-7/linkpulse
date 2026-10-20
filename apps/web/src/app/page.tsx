@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell, useMe } from '@/components/AppShell';
 import { BarList, ClicksChart, Legend, Point } from '@/components/charts';
-import { PeriodPicker } from '@/components/PeriodPicker';
+import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { LiveBadge } from '@/components/LiveBadge';
 import { useDebounced, useLive } from '@/lib/useLive';
 import { Badge, Button, Card, Empty, PageHeader, Spinner, Stat, cx } from '@/components/ui';
@@ -37,7 +37,7 @@ function Dashboard() {
   const [campaignList, setCampaignList] = useState<{ id: string; name: string }[]>([]);
 
   const load = useCallback(() => {
-    api<Dash>(`/dashboard${qs({ period, campaignId, scope: platform ? 'platform' : undefined })}`).then(setData).catch(() => {});
+    api<Dash>(`/dashboard${qs({ ...periodQuery(period), campaignId, scope: platform ? 'platform' : undefined })}`).then(setData).catch(() => {});
   }, [period, campaignId, platform]);
 
   useEffect(() => { load(); }, [load]);

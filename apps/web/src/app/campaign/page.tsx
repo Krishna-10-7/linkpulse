@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ClicksChart, Legend, Point } from '@/components/charts';
-import { PeriodPicker } from '@/components/PeriodPicker';
+import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Badge, Button, Card, Empty, Notice, PageHeader, Spinner, Stat } from '@/components/ui';
 import { api, qs } from '@/lib/api';
 import { date, host, num, STATUS_STYLE } from '@/lib/format';
@@ -23,7 +23,7 @@ function Campaign() {
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => setId(new URLSearchParams(location.search).get('id')), []);
-  useEffect(() => { if (id) api<Detail>(`/campaigns/${id}${qs({ period })}`).then(setD).catch(e => setErr(e.message)); }, [id, period]);
+  useEffect(() => { if (id) api<Detail>(`/campaigns/${id}${qs(periodQuery(period))}`).then(setD).catch(e => setErr(e.message)); }, [id, period]);
 
   if (err) return <Notice tone="bad">{err}</Notice>;
   if (!d) return <div className="grid h-64 place-items-center"><Spinner /></div>;
