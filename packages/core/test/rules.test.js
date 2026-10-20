@@ -58,3 +58,10 @@ test('targeting rules pick a destination by priority', () => {
   assert.equal(desk.destination, 'https://example.com');
   assert.equal(desk.step, 9);
 });
+
+test('country rules match the visitor country case-insensitively', () => {
+  const link = { ...base, rules: [{ type: 'country', value: 'IN', destination: 'https://in.example.com', priority: 1 }] };
+  assert.equal(evaluate(link, { now, country: 'in' }).destination, 'https://in.example.com');
+  assert.equal(evaluate(link, { now, country: 'US' }).destination, 'https://example.com');
+  assert.equal(evaluate(link, { now, country: null }).destination, 'https://example.com');
+});

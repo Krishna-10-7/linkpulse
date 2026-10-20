@@ -22,6 +22,15 @@ function deviceOf(ua) {
   return { device: type, os: p.os.name || null, browser: p.browser.name || null };
 }
 
+// Country targeting needs an IP lookup. The GeoLite2 data is large, so it is loaded
+// only the first time a link with a country rule is opened.
+let geo;
+async function countryOf(ip) {
+  if (!ip) return null;
+  geo ??= (await import('geoip-lite')).default;
+  return geo.lookup(ip.replace(/^::ffff:/, ''))?.country ?? null;
+}
+
 const html = (reply, status, body) => reply.code(status).header('cache-control', 'no-store').type('text/html; charset=utf-8').send(body);
 
 async function logClick(link, req, { bot, botReason, destination, visitor }) {
@@ -60,7 +69,8 @@ async function handle(req, reply) {
   if (link?.clickLimit != null) currentClicks = Number(await r.get(keys.cap(link.id))) || 0;
 
   const unlocked = link?.passwordHash ? verifyUnlockToken(link.id, parseCookies(req.headers.cookie)[cookieName(link.id)]) : false;
-  const result = evaluate(link, { now: new Date(), device, os, currentClicks, unlocked });
+  const country = link?.rules?.some(rule => rule.type === 'country') ? await countryOf(req.ip) : null;
+  const result = evaluate(link, { now: new Date(), device, os, country, currentClicks, unlocked });
 
   switch (result.outcome) {
     case OUTCOME.NOT_FOUND: return html(reply, 404, pages.notFound(raw));
