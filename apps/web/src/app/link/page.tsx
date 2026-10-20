@@ -9,7 +9,7 @@ import { QrDesigner } from '@/components/QrDesigner';
 import { RuleEditor } from '@/components/RuleEditor';
 import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Badge, Button, Card, Field, Input, Notice, Spinner, Stat } from '@/components/ui';
-import { api, ApiError, qs } from '@/lib/api';
+import { api, ApiError, qs, BASE } from '@/lib/api';
 import { ago, date, dateTime, num, pct, STATUS_STYLE, toLocalInput } from '@/lib/format';
 import type { LinkItem, Rule } from '@/lib/types';
 import { useDebounced, useLive } from '@/lib/useLive';
@@ -146,7 +146,7 @@ function Detail() {
         </Card>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3"><PeriodPicker value={period} onChange={setPeriod} /><LiveBadge connected={live.connected} last={live.last && live.last.linkId === id ? live.last : null} /></div>
+      <div className="mb-4 flex flex-wrap items-center gap-3"><PeriodPicker value={period} onChange={setPeriod} /><a href={`${BASE}/api/links/${link.id}/clicks.csv${qs(periodQuery(period))}`}><Button variant="ghost" size="sm">Download clicks (CSV)</Button></a><LiveBadge connected={live.connected} last={live.last && live.last.linkId === id ? live.last : null} /></div>
       {!a || !t ? <div className="grid h-40 place-items-center"><Spinner /></div> : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

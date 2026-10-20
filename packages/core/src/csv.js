@@ -98,3 +98,8 @@ export function errorReportCsv(results) {
   const bad = results.filter(r => r.status !== 'valid' && r.status !== 'imported');
   return Papa.unparse(bad.map(r => ({ row: r.rowNumber, status: r.status, problem: r.messages.join(' '), ...r.raw })));
 }
+
+/** Rows (array of plain objects) to CSV text, for exports. */
+export function toCsv(rows, columns) {
+  return Papa.unparse(rows, columns ? { columns } : undefined);
+}

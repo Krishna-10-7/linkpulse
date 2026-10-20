@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { CopyButton } from '@/components/CopyButton';
 import { Badge, Button, Empty, Input, PageHeader, Spinner } from '@/components/ui';
-import { api, qs } from '@/lib/api';
+import { api, qs, BASE } from '@/lib/api';
 import { date, host, num, STATUS_STYLE } from '@/lib/format';
 import type { LinkItem } from '@/lib/types';
 
@@ -38,7 +38,7 @@ function Links() {
 
   return (
     <>
-      <PageHeader title="Links" sub="Every short link you own. Archived links keep their analytics." actions={<><Link href="/import/"><Button variant="ghost">Bulk import</Button></Link><Link href="/links/new/"><Button>New link</Button></Link></>} />
+      <PageHeader title="Links" sub="Every short link you own. Archived links keep their analytics." actions={<><a href={`${BASE}/api/links/export.csv${qs({ q, status, campaignId, tag })}`}><Button variant="ghost">Export CSV</Button></a><Link href="/import/"><Button variant="ghost">Bulk import</Button></Link><Link href="/links/new/"><Button>New link</Button></Link></>} />
       <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
         <Input placeholder="Search code, destination or title" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} aria-label="Search links" />
         <select className={sel} value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} aria-label="Status">
