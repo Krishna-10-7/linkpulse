@@ -1,6 +1,7 @@
 import os from 'node:os';
 import { prisma } from '@linkpulse/db';
-import { createRedis, keys, CLICK_GROUP } from '@linkpulse/runtime';
+import { createRedis, keys, CLICK_GROUP, config } from '@linkpulse/runtime';
+import { dayKey } from '@linkpulse/core';
 import { enrich, fieldsOf } from './enrich.js';
 import { startHealthMonitor } from './health.js';
 
@@ -23,7 +24,8 @@ function countBy(list, key) {
   return m;
 }
 
-const dayOf = d => d.toISOString().slice(0, 10);
+// Rollup days follow the workspace time zone, not UTC.
+const dayOf = d => dayKey(d, config.timezone);
 
 /** A visitor counts once per link per day: SET NX on a hashed key that expires after two days. */
 async function markUniques(rows) {

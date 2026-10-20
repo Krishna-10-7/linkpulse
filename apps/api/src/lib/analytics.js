@@ -1,30 +1,34 @@
 import { prisma, Prisma } from '@linkpulse/db';
+import { dayKey, startOfDay, addDays } from '@linkpulse/core';
+import { config } from '@linkpulse/runtime';
 import { badRequest } from './http.js';
 
 // Shared analytics helpers. Daily numbers come from click_daily rollups,
 // breakdowns (source, device, browser, country) from click_events within the period.
 
 const DAY = 86400000;
+const TZ = config.timezone;
+const localDay = d => dayKey(d, TZ);           // calendar day of an instant in the workspace zone
+const dateKey = d => d.toISOString().slice(0, 10); // value of a @db.Date column
 export const PERIODS = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
 
 /** period=7d, or from/to ISO dates. Returns { from, to, days, hourly, prevFrom, prevTo }. */
 export function parsePeriod({ period = '7d', from, to } = {}) {
   let start, end = new Date();
   if (from || to) {
-    start = from ? new Date(from) : new Date(Date.now() - 7 * DAY);
-    end = to ? new Date(new Date(to).getTime() + (String(to).length <= 10 ? DAY - 1 : 0)) : new Date();
+    const dateOnly = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+    start = !from ? new Date(Date.now() - 7 * DAY) : dateOnly(from) ? startOfDay(from, TZ) : new Date(from);
+    end = !to ? new Date() : dateOnly(to) ? new Date(startOfDay(addDays(to, 1), TZ).getTime() - 1) : new Date(to);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) throw badRequest('Invalid date range.');
     if (end - start > 366 * DAY) throw badRequest('Ranges are limited to one year.');
   } else {
     const days = PERIODS[period];
     if (!days) throw badRequest('period must be one of 24h, 7d, 30d, 90d.');
-    start = days === 1 ? new Date(end.getTime() - DAY) : new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() - (days - 1)));
+    start = days === 1 ? new Date(end.getTime() - DAY) : startOfDay(addDays(localDay(end), -(days - 1)), TZ);
   }
   const span = end - start;
   return { from: start, to: end, hourly: span <= 2 * DAY, prevFrom: new Date(start.getTime() - span), prevTo: start };
 }
-
-const dayKey = d => d.toISOString().slice(0, 10);
 
 /** Zero-filled series: [{ t, clicks, uniques, bots }] by day, or by hour for ranges up to 48 h. */
 export async function timeseries(linkIds, p) {
@@ -45,15 +49,16 @@ export async function timeseries(linkIds, p) {
     }
     return out;
   }
+  const first = localDay(p.from), last = localDay(p.to);
   const rows = await prisma.clickDaily.groupBy({
-    by: ['day'], where: { linkId: { in: linkIds }, day: { gte: new Date(dayKey(p.from)), lte: new Date(dayKey(p.to)) } },
+    by: ['day'], where: { linkId: { in: linkIds }, day: { gte: new Date(first), lte: new Date(last) } },
     _sum: { clicks: true, uniques: true, bots: true, qr: true },
   });
-  const map = new Map(rows.map(r => [dayKey(r.day), r._sum]));
+  const map = new Map(rows.map(r => [dateKey(r.day), r._sum]));
   const out = [];
-  for (let t = new Date(dayKey(p.from)); t <= p.to; t = new Date(t.getTime() + DAY)) {
-    const s = map.get(dayKey(t));
-    out.push({ t: dayKey(t), clicks: s?.clicks ?? 0, uniques: s?.uniques ?? 0, bots: s?.bots ?? 0, qr: s?.qr ?? 0 });
+  for (let day = first; day <= last; day = addDays(day, 1)) {
+    const s = map.get(day);
+    out.push({ t: day, clicks: s?.clicks ?? 0, uniques: s?.uniques ?? 0, bots: s?.bots ?? 0, qr: s?.qr ?? 0 });
   }
   return out;
 }

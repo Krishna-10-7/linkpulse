@@ -19,7 +19,8 @@
     "dev:web": "npm run dev -w @linkpulse/web",
     "build:web": "npm run build -w @linkpulse/web",
     "gateway": "node scripts/gateway.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "db:rollups": "npm run rollups -w @linkpulse/db"
   },
   "engines": {
     "node": ">=20"

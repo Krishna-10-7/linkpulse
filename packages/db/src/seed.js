@@ -168,7 +168,7 @@ async function main() {
   await prisma.$executeRaw`DELETE FROM "ClickDaily" WHERE "linkId" IN (SELECT id FROM "Link" WHERE "workspaceId" = ${ws})`;
   await prisma.$executeRaw`
     INSERT INTO "ClickDaily" ("linkId", "day", "clicks", "uniques", "bots", "qr")
-    SELECT "linkId", date_trunc('day', "ts")::date,
+    SELECT "linkId", (("ts" AT TIME ZONE 'UTC') AT TIME ZONE ${process.env.APP_TIMEZONE || 'Asia/Kolkata'})::date,
            COUNT(*) FILTER (WHERE NOT "isBot"), COUNT(*) FILTER (WHERE "isUnique"),
            COUNT(*) FILTER (WHERE "isBot"), COUNT(*) FILTER (WHERE "viaQr" AND NOT "isBot")
     FROM "ClickEvent" WHERE "linkId" IN (SELECT id FROM "Link" WHERE "workspaceId" = ${ws})

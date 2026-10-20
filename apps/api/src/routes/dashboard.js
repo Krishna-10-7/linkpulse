@@ -1,7 +1,8 @@
 import { prisma } from '@linkpulse/db';
 import { requireUser, ownerScope } from '../plugins/auth.js';
 import { parsePeriod, timeseries, totals, breakdown, change } from '../lib/analytics.js';
-import { shortUrl } from '@linkpulse/runtime';
+import { shortUrl, config } from '@linkpulse/runtime';
+import { dayKey, addDays } from '@linkpulse/core';
 
 const DAY = 86400000;
 
@@ -20,12 +21,12 @@ async function alerts(links) {
   // Spike: today's human clicks are more than 3× the daily average of the previous week (and at least 50).
   const ids = links.filter(l => l.status === 'ACTIVE').map(l => l.id);
   if (ids.length) {
-    const today = new Date(new Date().toISOString().slice(0, 10));
-    const rows = await prisma.clickDaily.findMany({ where: { linkId: { in: ids }, day: { gte: new Date(today - 7 * DAY) } }, select: { linkId: true, day: true, clicks: true } });
+    const today = dayKey(new Date(), config.timezone);
+    const rows = await prisma.clickDaily.findMany({ where: { linkId: { in: ids }, day: { gte: new Date(addDays(today, -7)) } }, select: { linkId: true, day: true, clicks: true } });
     const by = new Map();
     for (const r of rows) {
       const e = by.get(r.linkId) || { today: 0, week: 0 };
-      if (r.day.getTime() === today.getTime()) e.today += r.clicks; else e.week += r.clicks;
+      if (r.day.toISOString().slice(0, 10) === today) e.today += r.clicks; else e.week += r.clicks;
       by.set(r.linkId, e);
     }
     for (const [linkId, e] of by) {

@@ -5,3 +5,4 @@ export * from './alias.js';
 export * from './traffic.js';
 export * from './csv.js';
 export * from './utm.js';
+export * from './time.js';
