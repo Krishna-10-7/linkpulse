@@ -27,7 +27,14 @@ const SOURCES = { social: 38, direct: 22, qr: 14, search: 10, email: 9, referral
 const REFERRERS = { social: ['instagram.com', 'x.com', 'whatsapp.com', 'linkedin.com', 'facebook.com', 'youtube.com'], search: ['google.com', 'bing.com', 'duckduckgo.com'], email: ['mail.google.com', 'outlook.live.com'], referral: ['medium.com', 'reddit.com', 'news.ycombinator.com'] };
 const DEVICES = { mobile: 62, desktop: 31, tablet: 7 };
 const OS = { mobile: { Android: 64, iOS: 36 }, tablet: { iOS: 60, Android: 40 }, desktop: { Windows: 58, 'Mac OS': 30, Linux: 12 } };
-const BROWSERS = { mobile: { Chrome: 58, 'Mobile Safari': 30, 'Samsung Browser': 8, Firefox: 4 }, tablet: { 'Mobile Safari': 55, Chrome: 45 }, desktop: { Chrome: 64, Edge: 16, Firefox: 10, Safari: 10 } };
+// Browsers depend on the operating system, so the demo never shows pairs like "Mobile Safari on Android".
+const BROWSERS = {
+  Android: { Chrome: 78, 'Samsung Browser': 15, Firefox: 4, Opera: 3 },
+  iOS: { 'Mobile Safari': 82, Chrome: 15, Firefox: 3 },
+  Windows: { Chrome: 66, Edge: 24, Firefox: 10 },
+  'Mac OS': { Safari: 48, Chrome: 46, Firefox: 6 },
+  Linux: { Chrome: 60, Firefox: 40 },
+};
 const COUNTRIES = { IN: 61, US: 11, AE: 6, GB: 5, SG: 4, CA: 3, DE: 3, AU: 3, NP: 2, BD: 2 };
 const CITIES = { IN: ['Mumbai', 'Delhi', 'Bengaluru', 'Dehradun', 'Pune', 'Hyderabad', 'Haldwani'], US: ['New York', 'San Jose', 'Austin'], AE: ['Dubai'], GB: ['London'], SG: ['Singapore'], CA: ['Toronto'], DE: ['Berlin'], AU: ['Sydney'], NP: ['Kathmandu'], BD: ['Dhaka'] };
 
@@ -56,6 +63,7 @@ function makeClicks(link, total, { days = 30, botRate = 0.08, qrBoost = 0, endDa
     let source = pick(SOURCES);
     if (rand() < qrBoost) source = 'qr';
     const deviceType = isBot ? 'bot' : rand() < mobileBoost ? 'mobile' : pick(DEVICES);
+    const os = isBot ? null : pick(OS[deviceType]);
     const country = pick(COUNTRIES);
     const cities = CITIES[country];
     const visitorHash = isBot ? randomBytes(16).toString('hex') : pool[Math.floor(rand() * pool.length)];
@@ -67,7 +75,7 @@ function makeClicks(link, total, { days = 30, botRate = 0.08, qrBoost = 0, endDa
     rows.push({
       linkId: link.id, ts, visitorHash, isBot, isUnique, viaQr: source === 'qr',
       source: isBot ? 'direct' : source, deviceType,
-      os: isBot ? null : pick(OS[deviceType]), browser: isBot ? null : pick(BROWSERS[deviceType]),
+      os, browser: os ? pick(BROWSERS[os]) : null,
       country: isBot ? 'US' : country, city: isBot ? null : cities[Math.floor(rand() * cities.length)],
       referrerDomain: refs && !isBot ? refs[Math.floor(rand() * refs.length)] : null,
     });
