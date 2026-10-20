@@ -10,6 +10,8 @@ export const keys = {
   pwTries: (linkId, visitor) => `lp:pw:${linkId}:${visitor}`,
   bucket: name => `lp:rl:${name}`,
   clickStream: 'lp:clicks',
+  clickAttempts: 'lp:clicks:attempts',             // failed processing attempts per stream entry
+  deadLetters: 'lp:clicks:dead',                   // entries that failed too often, kept for inspection
   liveChannel: 'lp:live',
 };
 

@@ -86,6 +86,29 @@ async function processBatch(entries) {
   await r.xack(keys.clickStream, CLICK_GROUP, ...ids);
 }
 
+// A batch that fails is retried one entry at a time. An entry that keeps failing
+// (for example a click for a link id that no longer resolves) is moved to a
+// dead-letter stream after MAX_ATTEMPTS, so it can never block the clicks behind it.
+const MAX_ATTEMPTS = 5;
+
+async function retryOneByOne(entries) {
+  for (const entry of entries) {
+    const [id, fields] = entry;
+    try {
+      await processBatch([entry]);
+      await r.hdel(keys.clickAttempts, id);
+    } catch (err) {
+      const attempts = await r.hincrby(keys.clickAttempts, id, 1);
+      if (attempts >= MAX_ATTEMPTS) {
+        await r.xadd(keys.deadLetters, 'MAXLEN', '~', 10000, '*', 'sourceId', id, 'error', String(err.message).slice(0, 500), ...fields);
+        await r.xack(keys.clickStream, CLICK_GROUP, id);
+        await r.hdel(keys.clickAttempts, id);
+        console.error(`[worker] ${id} failed ${attempts} times, moved to ${keys.deadLetters}: ${err.message}`);
+      }
+    }
+  }
+}
+
 async function loop() {
   await ensureGroup();
   // First drain anything this consumer read but never acknowledged.
@@ -95,7 +118,12 @@ async function loop() {
     const entries = res?.[0]?.[1] ?? [];
     if (start === '0' && entries.length === 0) { start = '>'; continue; }
     try { await processBatch(entries); }
-    catch (err) { console.error('[worker] batch failed, will retry', err.message); start = '0'; await new Promise(s => setTimeout(s, 2000)); }
+    catch (err) {
+      console.error('[worker] batch failed, retrying entries one by one:', err.message);
+      await retryOneByOne(entries);
+      start = '0'; // pick up anything still pending
+      await new Promise(s => setTimeout(s, 1000));
+    }
   }
 }
 
