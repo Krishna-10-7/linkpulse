@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '@linkpulse/db';
 import { config } from '@linkpulse/runtime';
 import { unauthorized, forbidden } from '../lib/http.js';
+import { enforce } from '../lib/limit.js';
 
 // Two ways in: the dashboard's HTTP-only session cookie, or a personal access token
 // (Authorization: Bearer lp_…) used by the browser extension.
@@ -38,7 +39,11 @@ export async function authPlugin(app) {
   app.addHook('onRequest', async req => {
     const header = req.headers.authorization || '';
     if (header.startsWith('Bearer lp_')) {
-      const token = await prisma.apiToken.findUnique({ where: { tokenHash: hashToken(header.slice(7)) } });
+      // Each token gets its own request budget. The check runs in Redis before the database
+      // lookup, so a flood of requests (or guessed tokens) never reaches Postgres.
+      const tokenHash = hashToken(header.slice(7));
+      await enforce('publicApi', tokenHash.slice(0, 24));
+      const token = await prisma.apiToken.findUnique({ where: { tokenHash } });
       if (token) {
         req.user = await loadUser(token.userId);
         prisma.apiToken.update({ where: { id: token.id }, data: { lastUsedAt: new Date() } }).catch(() => {});

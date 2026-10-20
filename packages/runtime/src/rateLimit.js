@@ -27,7 +27,7 @@ export const LIMITS = Object.freeze({
   login: { capacity: 10, windowSeconds: 900 },         // 10 sign-in attempts / 15 min / IP
   register: { capacity: 5, windowSeconds: 3600 },      // 5 sign-ups / hour / IP
   report: { capacity: 10, windowSeconds: 3600 },       // 10 abuse reports / hour / visitor
-  publicApi: { capacity: 60, windowSeconds: 60 },
+  publicApi: { capacity: 60, windowSeconds: 60 },     // 60 requests / minute / access token
 });
 
 /** @returns {Promise<{ allowed: boolean, remaining: number, retryAfter: number }>} */
