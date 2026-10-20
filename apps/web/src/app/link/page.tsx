@@ -6,11 +6,12 @@ import { BarList, ClicksChart, Legend, Point } from '@/components/charts';
 import { CopyButton } from '@/components/CopyButton';
 import { LiveBadge } from '@/components/LiveBadge';
 import { QrDesigner } from '@/components/QrDesigner';
+import { RuleEditor } from '@/components/RuleEditor';
 import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Badge, Button, Card, Field, Input, Notice, Spinner, Stat } from '@/components/ui';
 import { api, ApiError, qs } from '@/lib/api';
 import { ago, date, dateTime, num, pct, STATUS_STYLE, toLocalInput } from '@/lib/format';
-import type { LinkItem } from '@/lib/types';
+import type { LinkItem, Rule } from '@/lib/types';
 import { useDebounced, useLive } from '@/lib/useLive';
 
 type B = { key: string; clicks: number }[];
@@ -27,6 +28,7 @@ function EditPanel({ link, onSaved, onClose }: { link: LinkItem; onSaved: (l: Li
     clickLimit: link.clickLimit ? String(link.clickLimit) : '', password: '', tags: link.tags.map(t => t.name).join(', '), campaignName: link.campaign?.name || '',
   });
   const [removePassword, setRemovePassword] = useState(false);
+  const [rules, setRules] = useState<Rule[]>(link.rules.map(({ type, value, destination }) => ({ type, value, destination })));
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   async function save() {
@@ -38,6 +40,7 @@ function EditPanel({ link, onSaved, onClose }: { link: LinkItem; onSaved: (l: Li
           expiresAt: f.expiresAt ? new Date(f.expiresAt).toISOString() : null, startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : null,
           clickLimit: f.clickLimit ? Number(f.clickLimit) : null, password: f.password || undefined, removePassword: removePassword || undefined,
           tags: f.tags.split(',').map(t => t.trim()).filter(Boolean), campaignName: f.campaignName || null,
+          rules: rules.filter(r => r.value && r.destination).map((r, i) => ({ ...r, priority: 100 - i })),
         },
       });
       onSaved(r.link);
@@ -61,6 +64,7 @@ function EditPanel({ link, onSaved, onClose }: { link: LinkItem; onSaved: (l: Li
           <Input value={f.password} onChange={set('password')} autoComplete="off" />
         </Field>
       </div>
+      <div className="mt-5"><RuleEditor rules={rules} onChange={setRules} /></div>
       {link.hasPassword && <label className="mt-3 flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={removePassword} onChange={e => setRemovePassword(e.target.checked)} className="h-4 w-4 accent-ink" />Remove password protection</label>}
       {err && <div className="mt-4"><Notice tone="bad">{err}</Notice></div>}
       <div className="mt-5 flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button></div>

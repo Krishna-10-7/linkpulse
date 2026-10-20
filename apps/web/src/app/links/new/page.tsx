@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { CopyButton } from '@/components/CopyButton';
+import { RuleEditor } from '@/components/RuleEditor';
 import { Button, Card, Field, Input, Notice, PageHeader, cx } from '@/components/ui';
 import { api, ApiError, Issue } from '@/lib/api';
 import type { LinkItem, Rule } from '@/lib/types';
@@ -197,29 +198,7 @@ function Wizard() {
                 <Field label="Campaign" hint="Defaults to the campaign name"><Input value={utm.utm_campaign} onChange={e => setUtm({ ...utm, utm_campaign: e.target.value })} placeholder="auto" /></Field>
               </div>
             </div>
-            <div>
-              <div className="mb-3 flex items-center justify-between"><span className="label">Device targeting</span>
-                <Button size="sm" variant="ghost" onClick={() => setRules([...rules, { type: 'device', value: 'mobile', destination: '' }])}>Add rule</Button></div>
-              {rules.length === 0 ? <p className="text-sm text-muted">Send phones, an OS or a country to a different page — for example iOS users to the App Store.</p> : (
-                <div className="space-y-2">
-                  {rules.map((r, i) => (
-                    <div key={i} className="grid gap-2 md:grid-cols-[120px_140px_1fr_auto]">
-                      <select className="input" value={r.type} onChange={e => setRules(rules.map((x, j) => j === i ? { ...x, type: e.target.value as Rule['type'], value: e.target.value === 'device' ? 'mobile' : e.target.value === 'os' ? 'iOS' : 'IN' } : x))}>
-                        <option value="device">Device</option><option value="os">OS</option><option value="country">Country</option>
-                      </select>
-                      {r.type === 'device' ? (
-                        <select className="input" value={r.value} onChange={e => setRules(rules.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select>
-                      ) : r.type === 'os' ? (
-                        <select className="input" value={r.value} onChange={e => setRules(rules.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}><option>iOS</option><option>Android</option><option>Windows</option><option value="Mac OS">macOS</option></select>
-                      ) : <Input value={r.value} maxLength={2} onChange={e => setRules(rules.map((x, j) => j === i ? { ...x, value: e.target.value.toUpperCase() } : x))} placeholder="IN" />}
-                      <Input value={r.destination} onChange={e => setRules(rules.map((x, j) => j === i ? { ...x, destination: e.target.value } : x))} placeholder="https://apps.apple.com/…" />
-                      <Button size="sm" variant="ghost" className="h-11" onClick={() => setRules(rules.filter((_, j) => j !== i))}>Remove</Button>
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted">Rules are checked top to bottom; the first match wins.</p>
-                </div>
-              )}
-            </div>
+            <RuleEditor rules={rules} onChange={setRules} />
           </Card>
 
           <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">

@@ -134,6 +134,13 @@ export async function linkRoutes(app) {
     if (body.password) data.passwordHash = await bcrypt.hash(body.password, 10);
     if (body.removePassword) data.passwordHash = null;
 
+    // Rule destinations get the same safety checks as the main destination.
+    for (const r of body.rules || []) {
+      const rc = await validateLinkInput({ destination: r.destination }, { network: false });
+      if (!rc.ok) throw badRequest(`Targeting rule for ${r.value}: ${rc.errors[0].message}`);
+      r.destination = rc.url;
+    }
+
     const updated = await prisma.$transaction(async tx => {
       if (body.tags) {
         const tags = await upsertTags(link.workspaceId, body.tags);
