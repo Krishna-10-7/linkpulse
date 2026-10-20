@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Core tests
+        run: npm test
+      - name: Dashboard build
+        run: npm run build:web
+        env:
+          NEXT_PUBLIC_BASE_PATH: /lk
+
+  end-to-end:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: linkpulse
+          POSTGRES_PASSWORD: linkpulse
+          POSTGRES_DB: linkpulse
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U linkpulse" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://linkpulse:linkpulse@localhost:5432/linkpulse
+      REDIS_URL: redis://127.0.0.1:6379
+      PUBLIC_BASE_URL: http://localhost:8440/lk
+      BASE_PATH: /lk
+      SESSION_SECRET: ci-only-secret-not-used-anywhere-else
+      ADMIN_EMAIL: admin@ci.local
+      ADMIN_PASSWORD: ci-admin-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - name: Start services
+        run: |
+          node apps/api/src/server.js > api.log 2>&1 &
+          node apps/redirect/src/server.js > redirect.log 2>&1 &
+          node apps/worker/src/worker.js > worker.log 2>&1 &
+          node scripts/gateway.js > gateway.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:8440/lk/api/health && break; sleep 1; done
+      - name: Smoke test
+        run: npm run smoke
+        env:
+          SMOKE_BASE: http://localhost:8440/lk
+      - name: Service logs
+        if: failure()
+        run: tail -n 50 api.log redirect.log worker.log gateway.log

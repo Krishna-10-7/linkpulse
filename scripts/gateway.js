@@ -24,7 +24,13 @@ function proxy(req, res, port, url, keepPrefix = false) {
     res.writeHead(r.statusCode, r.headers);
     r.pipe(res);
   });
-  up.on('error', () => { res.writeHead(502, { 'content-type': 'text/plain' }); res.end(`upstream :${port} is not running`); });
+  up.on('error', () => {
+    // If the upstream dies mid-response (for example a restart during a live stream),
+    // headers are already sent: just close the connection instead of crashing.
+    if (res.headersSent) return res.destroy();
+    res.writeHead(502, { 'content-type': 'text/plain' });
+    res.end(`upstream :${port} is not running`);
+  });
   req.pipe(up);
 }
 
