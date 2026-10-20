@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { CopyButton } from '@/components/CopyButton';
-import { Badge, Button, Empty, Input, PageHeader, Spinner } from '@/components/ui';
+import { Badge, Button, Empty, Input, Notice, PageHeader, Spinner } from '@/components/ui';
 import { api, qs, BASE } from '@/lib/api';
 import { date, host, num, STATUS_STYLE } from '@/lib/format';
 import type { LinkItem } from '@/lib/types';
@@ -17,6 +17,9 @@ function Links() {
   const [data, setData] = useState<{ items: LinkItem[]; total: number; pageSize: number } | null>(null);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [moveTo, setMoveTo] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const p = new URLSearchParams(location.search);
@@ -26,12 +29,27 @@ function Links() {
     api<{ items: { id: string; name: string }[] }>('/tags').then(r => setTags(r.items)).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      api<{ items: LinkItem[]; total: number; pageSize: number }>(`/links${qs({ q, status, campaignId, tag, page })}`).then(setData).catch(() => {});
-    }, 250);
-    return () => clearTimeout(t);
+  const load = useCallback(() => {
+    api<{ items: LinkItem[]; total: number; pageSize: number }>(`/links${qs({ q, status, campaignId, tag, page })}`).then(setData).catch(() => {});
   }, [q, status, campaignId, tag, page]);
+  useEffect(() => {
+    const t = setTimeout(load, 250);
+    setSelected(new Set());
+    return () => clearTimeout(t);
+  }, [load]);
+
+  const toggle = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allOnPage = !!data?.items.length && data.items.every(l => selected.has(l.id));
+
+  async function bulk(action: 'pause' | 'resume' | 'archive' | 'campaign') {
+    if (action === 'archive' && !confirm(`Archive ${selected.size} links? They stop redirecting but keep their analytics.`)) return;
+    const r = await api<{ updated: number; skipped: number }>('/links/bulk', { method: 'POST', json: {
+      ids: [...selected], action, ...(action === 'campaign' ? { campaignId: moveTo || null } : {}),
+    } }).catch(e => ({ updated: 0, skipped: selected.size, error: e.message }));
+    setNotice(`${r.updated} updated${r.skipped ? ` · ${r.skipped} skipped (disabled, under review or already in that state)` : ''}.`);
+    setSelected(new Set());
+    load();
+  }
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const sel = 'h-11 rounded-xl border-2 border-ink bg-white px-3 text-sm font-semibold';
@@ -52,13 +70,32 @@ function Links() {
         </select>
       </div>
 
+      {notice && <div className="mb-4"><Notice tone="ok">{notice}</Notice></div>}
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-10 mb-4 flex flex-wrap items-center gap-2 rounded-xl2 border-2 border-ink bg-mark px-4 py-3 shadow-ink" role="region" aria-label="Bulk actions">
+          <span className="mr-2 font-mono text-sm font-bold">{selected.size} selected</span>
+          <Button size="sm" variant="ghost" onClick={() => bulk('pause')}>Pause</Button>
+          <Button size="sm" variant="ghost" onClick={() => bulk('resume')}>Resume</Button>
+          <Button size="sm" variant="ghost" onClick={() => bulk('archive')}>Archive</Button>
+          <select value={moveTo} onChange={e => setMoveTo(e.target.value)} aria-label="Move to campaign" className="h-8 rounded-lg border-2 border-ink bg-white px-2 text-xs font-semibold">
+            <option value="">No campaign</option>{campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <Button size="sm" variant="ghost" onClick={() => bulk('campaign')}>Move</Button>
+          <button className="ml-auto font-mono text-xs font-bold underline" onClick={() => setSelected(new Set())}>Clear</button>
+        </div>
+      )}
       {!data ? <div className="grid h-40 place-items-center"><Spinner /></div> : data.items.length === 0 ? (
         <Empty title="No links match">Try another search, or <Link href="/links/new/" className="font-semibold underline">create a link</Link>.</Empty>
       ) : (
         <div className="card overflow-hidden">
+          <label className="flex items-center gap-3 border-b border-line px-5 py-2.5 text-sm font-semibold">
+            <input type="checkbox" className="h-4 w-4 accent-ink" checked={allOnPage} onChange={() => setSelected(allOnPage ? new Set() : new Set(data.items.map(l => l.id)))} />
+            Select all on this page
+          </label>
           <ul>
             {data.items.map(l => (
               <li key={l.id} className="flex flex-col gap-3 border-b border-line px-5 py-4 last:border-0 md:flex-row md:items-center">
+                <input type="checkbox" className="h-4 w-4 shrink-0 accent-ink" checked={selected.has(l.id)} onChange={() => toggle(l.id)} aria-label={`Select ${l.code}`} />
                 <Link href={`/link/?id=${l.id}`} className="min-w-0 flex-1 group">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-mono text-[15px] font-bold group-hover:underline">{l.shortUrl.replace(/^https?:\/\//, '')}</span>

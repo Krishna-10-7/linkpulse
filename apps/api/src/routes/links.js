@@ -158,6 +158,29 @@ export async function linkRoutes(app) {
     return { link: serializeLink(updated) };
   });
 
+  // Bulk actions from the links list. Admin-disabled and under-review links are skipped,
+  // exactly as they would be one by one.
+  const Bulk = z.object({
+    ids: z.array(z.string()).min(1, 'Select at least one link.').max(200),
+    action: z.enum(['pause', 'resume', 'archive', 'campaign']),
+    campaignId: z.string().nullable().optional(),
+    campaignName: z.string().trim().max(80).nullable().optional(),
+  });
+  app.post('/api/links/bulk', async req => {
+    const body = parse(Bulk, req.body);
+    const links = await prisma.link.findMany({ where: { id: { in: body.ids }, ...ownerScope(req.user) }, select: { id: true, codeLower: true, status: true, flagged: true, workspaceId: true } });
+    const locked = l => l.status === 'DISABLED' || l.flagged;
+    const editable = links.filter(l => !locked(l));
+    const data = {
+      pause: { status: 'PAUSED' }, resume: { status: 'ACTIVE' }, archive: { status: 'ARCHIVED' },
+      campaign: { campaignId: body.action === 'campaign' ? await resolveCampaign(req.user.workspaceId, body) : undefined },
+    }[body.action];
+    const targets = body.action === 'resume' ? editable.filter(l => l.status === 'PAUSED' || l.status === 'ARCHIVED') : editable;
+    if (targets.length) await prisma.link.updateMany({ where: { id: { in: targets.map(l => l.id) } }, data });
+    await Promise.all(targets.map(l => invalidateLink(l.codeLower)));
+    return { updated: targets.length, skipped: body.ids.length - targets.length };
+  });
+
   // Links are never hard-deleted: archiving keeps their analytics traceable in reports.
   app.delete('/api/links/:id', async req => {
     const link = await findOwned(req.user, req.params.id);
