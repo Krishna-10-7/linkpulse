@@ -5,6 +5,7 @@ import { AppShell } from '@/components/AppShell';
 import { BarList, ClicksChart, Legend, Point } from '@/components/charts';
 import { CopyButton } from '@/components/CopyButton';
 import { LiveBadge } from '@/components/LiveBadge';
+import { QrDesigner } from '@/components/QrDesigner';
 import { PeriodPicker, periodQuery } from '@/components/PeriodPicker';
 import { Badge, Button, Card, Field, Input, Notice, Spinner, Stat } from '@/components/ui';
 import { api, ApiError, qs } from '@/lib/api';
@@ -98,7 +99,7 @@ function Detail() {
   return (
     <>
       <div className="mb-2"><Link href="/links/" className="font-mono text-xs font-bold text-muted hover:text-ink">← All links</Link></div>
-      <div className="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={STATUS_STYLE[link.status]}>{link.flagged ? 'under review' : link.status.toLowerCase()}</Badge>
@@ -122,14 +123,7 @@ function Detail() {
           {link.flagged && link.status !== 'DISABLED' && <div className="mt-4"><Notice tone="warn">Paused for review{link.disabledReason ? ` — ${link.disabledReason}` : ''}. An admin will restore or disable it.</Notice></div>}
           {err && <div className="mt-4"><Notice tone="bad">{err}</Notice></div>}
         </div>
-        <div className="card p-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={link.qrUrl} alt={`QR code for ${link.shortUrl}`} className="w-full" />
-          <div className="mt-2 flex justify-center gap-3 font-mono text-xs font-bold">
-            <a className="underline" href={`${link.qrUrl.replace('.svg', '.png')}?download=1&size=1024`}>PNG</a>
-            <a className="underline" href={`${link.qrUrl}?download=1`}>SVG</a>
-          </div>
-        </div>
+        <QrDesigner qrUrl={link.qrUrl} code={link.code} />
       </div>
 
       {editing && <EditPanel link={link} onClose={() => setEditing(false)} onSaved={l => { setLink(l); setEditing(false); }} />}
